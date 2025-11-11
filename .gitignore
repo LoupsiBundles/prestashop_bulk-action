@@ -1,0 +1,18 @@
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Composer / PHP
+vendor/
+composer.lock
+
+# NPM/Yarn
+node_modules/
+
+# PrestaShop project files (generated via Docker entrypoint)
+prestashop/
+
+# Docker
+.env

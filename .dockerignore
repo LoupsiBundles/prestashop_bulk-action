@@ -1,0 +1,21 @@
+# Git
+.git
+.gitignore
+
+# IDE/OS
+.idea
+.vscode
+*.iml
+.DS_Store
+
+# Node/Composer
+node_modules
+vendor
+composer.lock
+
+# Generated shop code (mounted as volume)
+prestashop
+
+# Docker
+.env
+docker-compose.override.yml
