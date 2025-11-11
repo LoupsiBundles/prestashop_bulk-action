@@ -1,34 +1,29 @@
 # prestashop_bulk-action
 Actions de masse utiles pour l’admin PrestaShop.
 
-Environnement de développement Docker pour PrestaShop 9.1 inclus.
+Environnement de développement basé sur PrestaShop Flashlight (recommandé pour le développement de modules).
 
 Prérequis
 - Docker et Docker Compose installés
 
-Démarrage rapide
-1. Construire et lancer:
-   - docker compose up -d --build
-2. Attendre l’initialisation (le conteneur app télécharge le projet PrestaShop 9.1 au premier démarrage).
-3. Ouvrir la boutique: http://localhost:8080
-   - L’installation Web vous guidera (hôte DB: db, base: prestashop, user: prestashop, pass: prestashop, préfixe: ps_).
-4. phpMyAdmin: http://localhost:8081 (user: prestashop / pass: prestashop)
+Démarrage rapide (Flashlight)
+1. Lancer: docker compose -f docker-compose.flashlight.yml up -d
+2. Ouvrir la boutique: http://localhost:8080
+3. Votre module est monté depuis ./src vers /var/www/html/modules/prestashop_bulk_action
 
 Développement du module
-- Le dossier ./src est monté dans le conteneur sous: /var/www/html/modules/prestashop_bulk_action
-- Le code du shop est persistant dans ./prestashop
-- Base de données persistante via un volume nommé
+- Placez le code du module dans ./src (mappé dans le conteneur sous /var/www/html/modules/prestashop_bulk_action)
+- Le code du shop peut être persisté localement dans ./prestashop (volume monté par défaut)
+- La base MySQL 8.0 est fournie par le service db (identifiants: prestashop / prestashop)
 
-Commandes utiles
-- Démarrer: docker compose up -d
-- Arrêter: docker compose down
-- Logs: docker compose logs -f app
-- Rebuild: docker compose build --no-cache app && docker compose up -d
-- Réinitialiser (ATTENTION, supprime DB et code PrestaShop):
-  - docker compose down -v
-  - rm -rf ./prestashop
+Commandes utiles (Makefile)
+- Démarrer: make up
+- Arrêter: make down
+- Logs: make logs
+- Rebuild (maj image et recréation): make rebuild
+- Réinitialiser (ATTENTION, supprime DB et code PrestaShop): make reset
 
 Notes
-- L’image PHP inclut les extensions nécessaires (pdo_mysql, intl, gd, zip, etc.) et Composer.
-- Au premier démarrage, le projet PrestaShop 9.1 est créé dans ./prestashop.
-- Vous pouvez adapter les versions de PHP/MySQL au besoin dans docker/app/Dockerfile et docker-compose.yml.
+- Image utilisée: prestashop/prestashop:9.0.1 (modifiable dans docker-compose.flashlight.yml)
+- Variables DB par défaut: DB_SERVER=db, DB_NAME=prestashop, DB_USER=prestashop, DB_PASSWORD=prestashop, DB_PREFIX=ps_
+- Vous pouvez changer la balise d’image pour cibler une autre version de PrestaShop.

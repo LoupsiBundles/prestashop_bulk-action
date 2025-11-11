@@ -1,28 +1,26 @@
 SHELL := /bin/bash
 
-.PHONY: up down logs rebuild reset pma
+.PHONY: up down logs rebuild reset
 
 up:
-	docker compose up -d --build
+	docker compose -f docker-compose.flashlight.yml up -d
 
 down:
-	docker compose down
+	docker compose -f docker-compose.flashlight.yml down
 
 logs:
-	docker compose logs -f app
+	docker compose -f docker-compose.flashlight.yml logs -f prestashop
 
 rebuild:
-	docker compose build --no-cache app && docker compose up -d
+	docker compose -f docker-compose.flashlight.yml pull prestashop && \
+	docker compose -f docker-compose.flashlight.yml up -d --force-recreate
 
 reset:
 	@read -p "Cette action va supprimer la DB et le code PrestaShop généré. Continuer ? (y/N) " ans; \
 	if [[ "$$ans" == "y" || "$$ans" == "Y" ]]; then \
-		docker compose down -v; \
+		docker compose -f docker-compose.flashlight.yml down -v; \
 		rm -rf ./prestashop; \
 		echo "Réinitialisation terminée"; \
 	else \
 		echo "Annulé"; \
 	fi
-
-pma:
-	open http://localhost:8081 || xdg-open http://localhost:8081 || true

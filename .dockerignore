@@ -8,12 +8,12 @@
 *.iml
 .DS_Store
 
-# Node/Composer
+# Node/Composer (aucun Composer utilisé côté projet, mais on garde ces patterns génériques)
 node_modules
 vendor
 composer.lock
 
-# Generated shop code (mounted as volume)
+# Code du shop généré (persistant via volume)
 prestashop
 
 # Docker
