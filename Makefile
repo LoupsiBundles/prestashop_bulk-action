@@ -37,13 +37,9 @@ test:
 
 reinstall:
 	@echo "🔄 Désinstallation du module..."
-	#docker exec -it ps-flashlight php bin/console prestashop:module uninstall prestashop_bulk_action || true
-	@echo "🔧 Génération de l'autoloader..."
-	#composer dump-autoload
+	docker exec -it ps-flashlight php bin/console prestashop:module uninstall prestashop_bulk_action || true
 	@echo "📦 Installation du module..."
 	docker exec -it ps-flashlight php bin/console prestashop:module install prestashop_bulk_action
-	@echo "🧹 Nettoyage du cache..."
-	docker exec -it ps-flashlight php bin/console cache:clear
 	@echo "✅ Module réinstallé avec succès!"
 
 # --- Helpers BO JS routing & assets ---

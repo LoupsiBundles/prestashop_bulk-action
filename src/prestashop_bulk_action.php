@@ -39,6 +39,9 @@ spl_autoload_register(function ($class) {
 
 use PrestaShop\PrestaShop\Core\Grid\Action\Bulk\Type\AjaxBulkAction;
 use PrestaShop\PrestaShop\Core\Grid\Action\Bulk\Type\SubmitBulkAction;
+use PrestaShop\PrestaShop\Core\Grid\Column\Type\Common\DataColumn;
+use PrestaShop\PrestaShop\Core\Grid\Data\GridData;
+use PrestaShop\PrestaShop\Core\Grid\Record\RecordCollection;
 
 class prestashop_bulk_action extends Module
 {
@@ -183,6 +186,7 @@ class prestashop_bulk_action extends Module
     {
         $ok = parent::install()
             && $this->registerHook('actionProductGridDefinitionModifier')
+            && $this->registerHook('actionProductGridDataModifier')
             // Pour FOSJsRouting: expose explicitement nos routes côté BO
             && $this->registerHook('actionBuildJsRoutes')
             // Injection d'un JS léger qui ajoute nos routes au routeur côté BO
@@ -214,6 +218,7 @@ class prestashop_bulk_action extends Module
         if ($enabled) {
             try {
                 $this->registerHook('actionProductGridDefinitionModifier');
+                $this->registerHook('actionProductGridDataModifier');
                 $this->registerHook('actionBuildJsRoutes');
                 $this->registerHook('actionAdminControllerSetMedia');
                 // Après activation (ou mise à jour), on (re)génère le fichier des routes JS
@@ -258,6 +263,54 @@ class prestashop_bulk_action extends Module
                 // ignore, keep default 0
             }
 
+            // 1) Ajuster les colonnes: retirer « Montant HT » et ajouter « Achetable »
+            if (method_exists($definition, 'getColumns') && method_exists($definition, 'setColumns')) {
+                $columns = $definition->getColumns();
+                // Supprime la colonne « Price (tax excl.) » dont l'ID est 'final_price_tax_excluded'
+                try {
+                    $columns->remove('final_price_tax_excluded');
+                } catch (\Throwable $e) {
+                    // tolérant si la colonne n'existe pas
+                }
+                // Ajoute une colonne « Achetable » (lecture seule) après la colonne 'category'
+                try {
+                    $columns->addAfter('category', (new DataColumn('achetable'))
+                        ->setName($this->l('Achetable'))
+                        ->setOptions([
+                            // champ fourni par le hook data ci‑dessous
+                            'field' => 'achetable_label',
+                            'clickable' => false,
+                        ]));
+                } catch (\Throwable $e) {
+                    // si l'insertion « after category » échoue, on tente un ajout simple
+                    try {
+                        $columns->add((new DataColumn('achetable'))
+                            ->setName($this->l('Achetable'))
+                            ->setOptions([
+                                'field' => 'achetable_label',
+                                'clickable' => false,
+                            ]));
+                    } catch (\Throwable $e2) {
+                        // silencieux
+                    }
+                }
+                $definition->setColumns($columns);
+            }
+
+            // 2) Nettoyer le filtre associé à la colonne supprimée s'il existe
+            if (method_exists($definition, 'getFilters') && method_exists($definition, 'setFilters')) {
+                try {
+                    $filters = $definition->getFilters();
+                    if ($filters && method_exists($filters, 'remove')) {
+                        $filters->remove('final_price_tax_excluded');
+                        $definition->setFilters($filters);
+                    }
+                } catch (\Throwable $e) {
+                    // silencieux
+                }
+            }
+
+            // 3) Conserver/ajouter nos actions de masse existantes
             if (method_exists($definition, 'getBulkActions') && method_exists($definition, 'setBulkActions')) {
                 $bulkActions = $definition->getBulkActions();
 
@@ -351,6 +404,137 @@ class prestashop_bulk_action extends Module
             }
         } catch (\Throwable $e) {
             // fail silent to avoid breaking back office if something changes
+        }
+    }
+
+    /**
+     * Enrichit les données de la grille Produits pour fournir le libellé « Achetable » (Oui/Non).
+     *
+     * @param array $params ['data' => GridData]
+     */
+    public function hookActionProductGridDataModifier(array $params)
+    {
+        try {
+            // Trace légère en mode dev pour diagnostiquer l’exécution du hook
+            if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
+                @error_log('[prestashop_bulk_action] hookActionProductGridDataModifier: entered');
+            }
+            if (!isset($params['data']) || !($params['data'] instanceof GridData)) {
+                return;
+            }
+
+            /** @var GridData $data */
+            $data = $params['data'];
+            $records = $data->getRecords();
+
+            // Extraire les lignes et les id_product, préparer des valeurs par défaut
+            $ids = [];
+            $rows = [];
+            $rawRows = method_exists($records, 'all') ? $records->all() : (array) $records;
+            if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
+                @error_log('[prestashop_bulk_action] data hook: initial rows count=' . (is_array($rawRows) ? count($rawRows) : 0));
+            }
+            foreach ($rawRows as $idx => $row) {
+                if (is_array($row)) {
+                    $rows[$idx] = $row;
+                    if (isset($row['id_product'])) {
+                        $ids[] = (int) $row['id_product'];
+                    }
+                } elseif (is_object($row)) {
+                    if (isset($row->id_product)) {
+                        $ids[] = (int) $row->id_product;
+                    }
+                    $rows[$idx] = (array) $row;
+                } else {
+                    // Ligne inattendue: forcer tableau
+                    $rows[$idx] = (array) $row;
+                }
+                // Valeurs par défaut pour éviter l'erreur « Key ... does not exist »
+                if (!isset($rows[$idx]['available_for_order'])) {
+                    $rows[$idx]['available_for_order'] = 0;
+                }
+                if (!isset($rows[$idx]['achetable_label'])) {
+                    $rows[$idx]['achetable_label'] = $this->l('Non');
+                }
+            }
+            if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
+                // Log des premières clés de la première ligne pour debugger
+                $first = reset($rows);
+                if (is_array($first)) {
+                    @error_log('[prestashop_bulk_action] data hook: first row keys(before)=' . implode(',', array_keys($first)));
+                }
+            }
+
+            // Déterminer l'id de boutique courant
+            $shopId = 0;
+            try {
+                if (isset(\Context::getContext()->shop->id)) {
+                    $shopId = (int) \Context::getContext()->shop->id;
+                }
+            } catch (\Throwable $e) {
+                $shopId = 0;
+            }
+
+            // Récupérer available_for_order pour les produits affichés sur la boutique courante
+            $in = implode(',', array_map('intval', array_unique($ids)));
+            $prefix = defined('_DB_PREFIX_') ? _DB_PREFIX_ : 'ps_';
+            $sql = 'SELECT ps.id_product, ps.available_for_order
+                    FROM ' . pSQL($prefix) . 'product_shop ps
+                    WHERE ps.id_product IN (' . $in . ')'
+                . ($shopId > 0 ? ' AND ps.id_shop=' . (int) $shopId : '');
+
+            $rowsMap = [];
+            if (!empty($ids)) {
+                try {
+                    $result = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql) ?: [];
+                    foreach ($result as $r) {
+                        $rowsMap[(int) $r['id_product']] = (int) $r['available_for_order'];
+                    }
+                } catch (\Throwable $e) {
+                    // En cas d'erreur DB, fallback: considérer non achetable
+                }
+            }
+
+            // Injecter/mettre à jour les champs dans chaque ligne
+            foreach ($rows as $i => $row) {
+                $pid = isset($row['id_product']) ? (int) $row['id_product'] : 0;
+                $isBuyable = isset($rowsMap[$pid]) ? (bool) $rowsMap[$pid] : (bool) ($row['available_for_order'] ?? false);
+                $row['available_for_order'] = (int) $isBuyable;
+                $row['achetable_label'] = $isBuyable ? $this->l('Oui') : $this->l('Non');
+                $rows[$i] = $row;
+            }
+            if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
+                $first = reset($rows);
+                if (is_array($first)) {
+                    @error_log('[prestashop_bulk_action] data hook: first row has achetable_label=' . (array_key_exists('achetable_label', $first) ? 'yes' : 'no'));
+                }
+            }
+
+            // Remplacer les records à l'intérieur de l'objet GridData existant (sans le remplacer),
+            // pour être 100% compatible avec le passage par référence utilisé par le hook.
+            try {
+                $ref = new \ReflectionObject($data);
+                if ($ref->hasProperty('records')) {
+                    $prop = $ref->getProperty('records');
+                    $prop->setAccessible(true);
+                    $prop->setValue($data, new RecordCollection(array_values($rows)));
+                }
+            } catch (\Throwable $e) {
+                // En cas d'échec (versions très anciennes), fallback: recréer GridData
+                $params['data'] = new GridData(
+                    new RecordCollection(array_values($rows)),
+                    $data->getRecordsTotal(),
+                    $data->getQuery()
+                );
+            }
+            if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
+                @error_log('[prestashop_bulk_action] hookActionProductGridDataModifier: finished');
+            }
+        } catch (\Throwable $e) {
+            // silencieux: ne pas casser la page produits
+            if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
+                @error_log('[prestashop_bulk_action] data hook: error: ' . $e->getMessage());
+            }
         }
     }
 

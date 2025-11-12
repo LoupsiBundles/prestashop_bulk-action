@@ -16,9 +16,9 @@ class SelectionExtractor
      * @param array<string,mixed> $post
      * @return array<int, int>
      */
-    public static function fromParameters(array $post)
+    public static function fromParameters(array $post): array
     {
-        $normalizeToArray = function ($value) {
+        $normalizeToArray = function ($value): array {
             if (is_array($value)) {
                 return $value;
             }
@@ -28,7 +28,7 @@ class SelectionExtractor
                     return [];
                 }
                 // Try JSON list first
-                $firstChar = isset($value[0]) ? $value[0] : '';
+                $firstChar = $value[0] ?? '';
                 if ($firstChar === '[' && substr($value, -1) === ']') {
                     $decoded = json_decode($value, true);
                     if (is_array($decoded)) {
@@ -36,7 +36,7 @@ class SelectionExtractor
                     }
                 }
                 // Fallback: CSV or single ID as string
-                return preg_split('/\s*,\s*/', $value);
+                return preg_split('/\s*,\s*/', $value) ?: [];
             }
             if (is_int($value) || is_float($value)) {
                 return [(int) $value];
@@ -46,11 +46,11 @@ class SelectionExtractor
 
         $candidates = [];
 
-        $candidates[] = $normalizeToArray(isset($post['selected']) ? $post['selected'] : null);
-        $candidates[] = $normalizeToArray(isset($post['selection']) ? $post['selection'] : null);
-        $candidates[] = $normalizeToArray(isset($post['ids']) ? $post['ids'] : null);
+        $candidates[] = $normalizeToArray($post['selected'] ?? null);
+        $candidates[] = $normalizeToArray($post['selection'] ?? null);
+        $candidates[] = $normalizeToArray($post['ids'] ?? null);
         // Compatible avec l'extension AjaxBulkAction de PrestaShop (requestParamName par défaut: bulk_ids)
-        $candidates[] = $normalizeToArray(isset($post['bulk_ids']) ? $post['bulk_ids'] : null);
+        $candidates[] = $normalizeToArray($post['bulk_ids'] ?? null);
 
         if (isset($post['product_bulk']) && is_array($post['product_bulk'])) {
             $bulk = $post['product_bulk'];
@@ -86,7 +86,7 @@ class SelectionExtractor
      *
      * @return array<int, int> Liste d'IDs telle que reçue (non filtrée >0, non unique)
      */
-    public static function fromRequest(Request $request)
+    public static function fromRequest(Request $request): array
     {
         // S'appuie sur fromParameters pour éviter les dépendances pendant les tests unitaires.
         return self::fromParameters($request->request->all());
