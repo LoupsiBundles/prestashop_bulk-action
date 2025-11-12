@@ -13,3 +13,27 @@ prestashop_bulk_action_make_unavailable:
     expose: true
   defaults:
     _controller: 'PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController::makeUnavailableAction'
+
+prestashop_bulk_action_backorder_allowed:
+  path: /prestashop-bulk-action/backorder-allowed
+  methods: [POST]
+  options:
+    expose: true
+  defaults:
+    _controller: 'PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController::setBackorderAllowedAction'
+
+prestashop_bulk_action_backorder_blocked:
+  path: /prestashop-bulk-action/backorder-blocked
+  methods: [POST]
+  options:
+    expose: true
+  defaults:
+    _controller: 'PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController::setBackorderBlockedAction'
+
+prestashop_bulk_action_backorder_default:
+  path: /prestashop-bulk-action/backorder-default
+  methods: [POST]
+  options:
+    expose: true
+  defaults:
+    _controller: 'PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController::setBackorderDefaultAction'

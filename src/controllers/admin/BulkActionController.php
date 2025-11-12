@@ -8,6 +8,7 @@ use PrestaShopBundle\Controller\Admin\PrestaShopAdminController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use PrestaShop\Module\PrestashopBulkAction\Utils\SelectionExtractor;
+use PrestaShop\PrestaShop\Core\Domain\Product\Stock\ValueObject\OutOfStockType;
 
 class BulkActionController extends PrestaShopAdminController
 {
@@ -79,6 +80,51 @@ class BulkActionController extends PrestaShopAdminController
     }
 
     /**
+     * Met à jour le comportement d'achat sur commande (out_of_stock) pour la boutique courante.
+     *  - 0 = bloqué, 1 = autorisé, 2 = défaut boutique.
+     *
+     * @param array<int,int> $ids
+     */
+    private function updateBackorder(array $ids, int $outOfStockType): JsonResponse
+    {
+        if (empty($ids)) {
+            return new JsonResponse([
+                'success' => false,
+                'errors' => [
+                    $this->trans('Aucun produit sélectionné.', [], 'Modules.Prestashopbulkaction.Admin'),
+                ],
+            ]);
+        }
+
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return new JsonResponse([
+                'success' => false,
+                'errors' => [
+                    $this->trans('Aucun produit valide.', [], 'Modules.Prestashopbulkaction.Admin'),
+                ],
+            ]);
+        }
+
+        $shopId = (int) Context::getContext()->shop->id;
+
+        try {
+            foreach ($ids as $idProduct) {
+                \StockAvailable::setProductOutOfStock((int) $idProduct, (int) $outOfStockType, $shopId, 0);
+            }
+
+            return new JsonResponse(['success' => true]);
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'success' => false,
+                'errors' => [
+                    $this->trans('Erreur lors de la mise à jour: %error%', ['%error%' => $e->getMessage()], 'Modules.Prestashopbulkaction.Admin'),
+                ],
+            ]);
+        }
+    }
+
+    /**
      * Rend les produits sélectionnés disponibles à la vente (available_for_order = 1) pour la boutique courante.
      */
     public function makeAvailableAction(Request $request)
@@ -94,5 +140,32 @@ class BulkActionController extends PrestaShopAdminController
     {
         $ids = SelectionExtractor::fromRequest($request);
         return $this->updateAvailability($ids, 0);
+    }
+
+    /**
+     * Active l'achat sur commande (autorisé même si rupture) pour les produits sélectionnés.
+     */
+    public function setBackorderAllowedAction(Request $request)
+    {
+        $ids = SelectionExtractor::fromRequest($request);
+        return $this->updateBackorder($ids, OutOfStockType::OUT_OF_STOCK_AVAILABLE);
+    }
+
+    /**
+     * Bloque l'achat sur commande pour les produits sélectionnés.
+     */
+    public function setBackorderBlockedAction(Request $request)
+    {
+        $ids = SelectionExtractor::fromRequest($request);
+        return $this->updateBackorder($ids, OutOfStockType::OUT_OF_STOCK_NOT_AVAILABLE);
+    }
+
+    /**
+     * Restaure le comportement par défaut de la boutique pour l'achat sur commande.
+     */
+    public function setBackorderDefaultAction(Request $request)
+    {
+        $ids = SelectionExtractor::fromRequest($request);
+        return $this->updateBackorder($ids, OutOfStockType::OUT_OF_STOCK_DEFAULT);
     }
 }
