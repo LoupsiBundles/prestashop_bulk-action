@@ -122,30 +122,4 @@ class BulkActionController extends PrestaShopAdminController
             ]);
         }
     }
-
-    /**
-     * Tente d’extraire la liste des IDs sélectionnés depuis différentes structures possibles.
-     * Ceci vise à être robuste vis-à-vis de versions/implémentations.
-     *
-     * @return int[]
-     */
-    private function extractSelectedIds(Request $request)
-    {
-        // Déprécié: conservé pour compatibilité si du code externe l'appelle encore.
-        return SelectionExtractor::fromRequest($request);
-    }
-
-    /**
-     * Détermine si la requête doit être traitée comme AJAX.
-     * On vérifie l’en-tête XMLHttpRequest et quelques indicateurs usuels envoyés par PrestaShop.
-     */
-    private function isAjax(Request $request)
-    {
-        if ($request->isXmlHttpRequest()) {
-            return true;
-        }
-        // Quelques grilles envoient un indicateur explicite
-        $p = $request->request;
-        return (bool) ($p->get('ajax') || $p->get('_ajax') || $p->get('json') || $p->get('_json'));
-    }
 }
