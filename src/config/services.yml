@@ -1,0 +1,10 @@
+services:
+  _defaults:
+    public: true
+
+  # Explicit definition to force-load the class file even if module autoloader isn't registered yet
+  PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController:
+    autowire: true
+    autoconfigure: true
+    public: true
+    tags: ['controller.service_arguments']

@@ -1,0 +1,50 @@
+{
+  "name": "local/prestashop-bulk-action",
+  "type": "prestashop-module",
+  "description": "Ajoute des actions groupées sur la grille produits (ex: rendre disponible à la vente)",
+  "version": "0.1.0",
+  "license": "AFL-3.0",
+  "require": {
+    "php": ">=7.2.5"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.5 || ^9.6"
+  },
+  "autoload": {
+    "psr-4": {
+      "PrestaShop\\Module\\PrestashopBulkAction\\": "",
+      "PrestaShop\\Module\\PrestashopBulkAction\\Controller\\Admin\\": "controllers/admin/"
+    },
+    "exclude-from-classmap": [
+      "prestashop_bulk_action.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "PrestaShop\\Module\\PrestashopBulkAction\\Tests\\": "tests/"
+    }
+  },
+  "authors": [
+    { "name": "prestashop-bulk-action" }
+  ],
+  "keywords": [
+    "prestashop",
+    "module",
+    "products",
+    "bulk-actions",
+    "catalog"
+  ],
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "config": {
+    "prepend-autoloader": false,
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "preferred-install": "dist"
+  },
+  "scripts": {
+    "test": [
+      "@php vendor/bin/phpunit --colors=always"
+    ]
+  }
+}

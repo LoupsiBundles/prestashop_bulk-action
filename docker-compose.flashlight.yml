@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  prestashop:
+    image: prestashop/prestashop:9.0.1
+    container_name: ps-flashlight
+    ports:
+      - "8080:80"
+    environment:
+      PS_DEV_MODE: "1"
+      # Domaine utilisé par PrestaShop
+      PS_DOMAIN: localhost:8080
+      # Paramètres DB (MySQL externe ci-dessous)
+      DB_SERVER: db
+      DB_NAME: prestashop
+      DB_USER: prestashop
+      DB_PASSWORD: prestashop
+      DB_PREFIX: ps_
+      # Installation automatique (si prise en charge par l'image)
+      AUTO_INSTALL: "1"
+    depends_on:
+      - db
+    volumes:
+      # Code du shop persistant (optionnel; l'image Flashlight peut aussi fonctionner en éphémère)
+      - ./prestashop:/var/www/html
+      # Montage du module pour le dev
+      - ./src:/var/www/html/modules/prestashop_bulk_action
+    networks:
+      - psnet
+
+  db:
+    image: mysql:8.0
+    container_name: ps-flashlight-db
+    command: ["--default-authentication-plugin=mysql_native_password", "--sql_mode=", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: prestashop
+      MYSQL_USER: prestashop
+      MYSQL_PASSWORD: prestashop
+    volumes:
+      - db_data_flash:/var/lib/mysql
+    networks:
+      - psnet
+
+volumes:
+  db_data_flash:
+
+networks:
+  psnet:
+    driver: bridge

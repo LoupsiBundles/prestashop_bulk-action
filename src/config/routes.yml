@@ -1,0 +1,19 @@
+prestashop_bulk_action_make_available:
+  # Important: keep path relative to the module mount point to avoid double 
+  # "/modules/..." prefix. The final BO URL becomes:
+  #   /adminXXXX/modules/prestashop-bulk-action/make-available
+  path: /prestashop-bulk-action/make-available
+  methods: [POST]
+  options:
+    expose: true
+  defaults:
+    _controller: 'PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController::makeAvailableAction'
+
+prestashop_bulk_action_make_unavailable:
+  # Same remark as above: keep it relative so it doesn't get double-prefixed
+  path: /prestashop-bulk-action/make-unavailable
+  methods: [POST]
+  options:
+    expose: true
+  defaults:
+    _controller: 'PrestaShop\Module\PrestashopBulkAction\Controller\Admin\BulkActionController::makeUnavailableAction'

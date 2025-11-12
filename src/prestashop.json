@@ -1,0 +1,28 @@
+{
+  "name": "prestashop_bulk_action",
+  "displayName": "Bulk actions produits",
+  "version": "0.1.1",
+  "author": "prestashop-bulk-action",
+  "description": "Ajoute des actions groupées sur la grille des produits (ex: Rendre disponible à la vente).",
+  "tab": "administration",
+  "confirmUninstall": false,
+  "need_instance": 0,
+  "ps_versions_compliancy": {
+    "min": "8.0.0",
+    "max": "~9.9.9"
+  },
+  "type": "module",
+  "routes": [
+    {
+      "id": "prestashop_bulk_action_routes",
+      "path": "config/routes.yml",
+      "prefix": "/modules/prestashop-bulk-action"
+    }
+  ],
+  "services": [
+    {
+      "id": "prestashop_bulk_action_services",
+      "path": "config/services.yml"
+    }
+  ]
+}
