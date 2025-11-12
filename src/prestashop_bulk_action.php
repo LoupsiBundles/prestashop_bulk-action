@@ -263,7 +263,7 @@ class prestashop_bulk_action extends Module
                 // ignore, keep default 0
             }
 
-            // 1) Ajuster les colonnes: retirer « Montant HT » et ajouter « Achetable »
+            // 1) Ajuster les colonnes: retirer « Montant HT » et ajouter « Achetable » et « Sur commande »
             if (method_exists($definition, 'getColumns') && method_exists($definition, 'setColumns')) {
                 $columns = $definition->getColumns();
                 // Supprime la colonne « Price (tax excl.) » dont l'ID est 'final_price_tax_excluded'
@@ -288,6 +288,27 @@ class prestashop_bulk_action extends Module
                             ->setName($this->l('Achetable'))
                             ->setOptions([
                                 'field' => 'achetable_label',
+                                'clickable' => false,
+                            ]));
+                    } catch (\Throwable $e2) {
+                        // silencieux
+                    }
+                }
+                // Ajoute une colonne « Sur commande » (lecture seule) après « Achetable »
+                try {
+                    $columns->addAfter('achetable', (new DataColumn('sur_commande'))
+                        ->setName($this->l('Sur commande'))
+                        ->setOptions([
+                            'field' => 'sur_commande_label',
+                            'clickable' => false,
+                        ]));
+                } catch (\Throwable $e) {
+                    // fallback: ajout simple en fin de liste
+                    try {
+                        $columns->add((new DataColumn('sur_commande'))
+                            ->setName($this->l('Sur commande'))
+                            ->setOptions([
+                                'field' => 'sur_commande_label',
                                 'clickable' => false,
                             ]));
                     } catch (\Throwable $e2) {
@@ -475,7 +496,7 @@ class prestashop_bulk_action extends Module
                 $shopId = 0;
             }
 
-            // Récupérer available_for_order pour les produits affichés sur la boutique courante
+            // Récupérer available_for_order (product_shop) et out_of_stock (stock_available)
             $in = implode(',', array_map('intval', array_unique($ids)));
             $prefix = defined('_DB_PREFIX_') ? _DB_PREFIX_ : 'ps_';
             $sql = 'SELECT ps.id_product, ps.available_for_order
@@ -484,6 +505,7 @@ class prestashop_bulk_action extends Module
                 . ($shopId > 0 ? ' AND ps.id_shop=' . (int) $shopId : '');
 
             $rowsMap = [];
+            $outOfStockMap = [];
             if (!empty($ids)) {
                 try {
                     $result = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql) ?: [];
@@ -495,12 +517,59 @@ class prestashop_bulk_action extends Module
                 }
             }
 
+            // Charger out_of_stock depuis stock_available (id_product_attribute = 0)
+            if (!empty($ids)) {
+                $shopGroupId = 0;
+                try {
+                    if (isset(\Context::getContext()->shop->id_shop_group)) {
+                        $shopGroupId = (int) \Context::getContext()->shop->id_shop_group;
+                    }
+                } catch (\Throwable $e) {
+                    $shopGroupId = 0;
+                }
+
+                $stockSql = 'SELECT sa.id_product, sa.out_of_stock, sa.id_shop'
+                    . ' FROM ' . pSQL($prefix) . 'stock_available sa'
+                    . ' WHERE sa.id_product IN (' . $in . ')'
+                    . ' AND sa.id_product_attribute = 0'
+                    . ($shopId > 0
+                        ? ' AND (sa.id_shop = ' . (int) $shopId
+                            . ' OR (sa.id_shop = 0 AND sa.id_shop_group = ' . (int) $shopGroupId . '))'
+                        : '');
+
+                try {
+                    $stockRows = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($stockSql) ?: [];
+                    foreach ($stockRows as $sr) {
+                        $pid = (int) $sr['id_product'];
+                        $out = (int) $sr['out_of_stock'];
+                        $rowShopId = isset($sr['id_shop']) ? (int) $sr['id_shop'] : 0;
+                        // Priorise la valeur spécifique boutique si disponible, sinon garde la valeur de groupe
+                        if ($rowShopId === $shopId || !isset($outOfStockMap[$pid])) {
+                            $outOfStockMap[$pid] = $out;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // silencieux: en cas d'échec, on conservera le fallback « Défaut » (2)
+                }
+            }
+
             // Injecter/mettre à jour les champs dans chaque ligne
             foreach ($rows as $i => $row) {
                 $pid = isset($row['id_product']) ? (int) $row['id_product'] : 0;
                 $isBuyable = isset($rowsMap[$pid]) ? (bool) $rowsMap[$pid] : (bool) ($row['available_for_order'] ?? false);
                 $row['available_for_order'] = (int) $isBuyable;
                 $row['achetable_label'] = $isBuyable ? $this->l('Oui') : $this->l('Non');
+
+                // Sur commande: 0 = Non, 1 = Oui, 2 = Défaut
+                $out = $outOfStockMap[$pid] ?? ($row['out_of_stock'] ?? 2);
+                $out = (int) $out;
+                if (!in_array($out, [0,1,2], true)) {
+                    $out = 2;
+                }
+                $row['out_of_stock'] = $out;
+                $row['sur_commande_label'] = ($out === 1)
+                    ? $this->l('Oui')
+                    : ($out === 0 ? $this->l('Non') : $this->l('Défaut'));
                 $rows[$i] = $row;
             }
             if (defined('_PS_MODE_DEV_') && _PS_MODE_DEV_) {
