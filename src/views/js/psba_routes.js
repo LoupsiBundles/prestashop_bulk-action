@@ -30,6 +30,36 @@
         hosttokens: [],
         methods: ["POST"],
         schemes: []
+      },
+
+      // Route: prestashop_bulk_action_backorder_allowed
+      prestashop_bulk_action_backorder_allowed: {
+        tokens: [["text", "/modules/prestashop-bulk-action/backorder-allowed"]],
+        defaults: [],
+        requirements: [],
+        hosttokens: [],
+        methods: ["POST"],
+        schemes: []
+      },
+
+      // Route: prestashop_bulk_action_backorder_blocked
+      prestashop_bulk_action_backorder_blocked: {
+        tokens: [["text", "/modules/prestashop-bulk-action/backorder-blocked"]],
+        defaults: [],
+        requirements: [],
+        hosttokens: [],
+        methods: ["POST"],
+        schemes: []
+      },
+
+      // Route: prestashop_bulk_action_backorder_default
+      prestashop_bulk_action_backorder_default: {
+        tokens: [["text", "/modules/prestashop-bulk-action/backorder-default"]],
+        defaults: [],
+        requirements: [],
+        hosttokens: [],
+        methods: ["POST"],
+        schemes: []
       }
     };
 

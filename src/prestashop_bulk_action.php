@@ -145,6 +145,10 @@ class prestashop_bulk_action extends Module
         $ourRoutes = [
             'prestashop_bulk_action_make_available',
             'prestashop_bulk_action_make_unavailable',
+            // Nouvelles routes Backorder
+            'prestashop_bulk_action_backorder_allowed',
+            'prestashop_bulk_action_backorder_blocked',
+            'prestashop_bulk_action_backorder_default',
         ];
 
         try {
@@ -386,6 +390,79 @@ class prestashop_bulk_action extends Module
                             'modal_error_title' => $this->l("Journal d'erreurs"),
                         ])
                     );
+
+                    // --- Nouvelles actions: Achat sur commande (backorder)
+                    $bulkActions->add((new AjaxBulkAction('psba_backorder_allowed_ajax'))
+                        ->setName($this->l('Achat sur commande autorisé'))
+                        ->setOptions([
+                            'class' => '',
+                            'ajax_route' => 'prestashop_bulk_action_backorder_allowed',
+                            'route_params' => ['shopId' => $shopId],
+                            'request_param_name' => 'product_bulk',
+                            'bulk_chunk_size' => 10,
+                            'reload_after_bulk' => true,
+                            'confirm_bulk_action' => true,
+                            'modal_confirm_title' => $this->l('Autoriser l’achat sur commande'),
+                            'modal_cancel' => $this->l('Annuler'),
+                            'modal_progress_title' => $this->l('Autoriser l’achat sur commande pour %total% produits'),
+                            'modal_progress_message' => $this->l('Traitement %done% / %total% produits'),
+                            'modal_close' => $this->l('Fermer'),
+                            'modal_stop_processing' => $this->l('Arrêter le traitement'),
+                            'modal_errors_message' => $this->l('%error_count% erreurs se sont produites. Vous pouvez télécharger les logs pour vous y référer ultérieurement.'),
+                            'modal_back_to_processing' => $this->l('Reprendre le traitement'),
+                            'modal_download_error_log' => $this->l("Télécharger le rapport d'erreur"),
+                            'modal_view_error_log' => $this->l('Afficher %error_count% rapports d\'erreur '),
+                            'modal_error_title' => $this->l("Journal d'erreurs"),
+                        ])
+                    );
+
+                    $bulkActions->add((new AjaxBulkAction('psba_backorder_blocked_ajax'))
+                        ->setName($this->l('Achat sur commande bloqué'))
+                        ->setOptions([
+                            'class' => '',
+                            'ajax_route' => 'prestashop_bulk_action_backorder_blocked',
+                            'route_params' => ['shopId' => $shopId],
+                            'request_param_name' => 'product_bulk',
+                            'bulk_chunk_size' => 10,
+                            'reload_after_bulk' => true,
+                            'confirm_bulk_action' => true,
+                            'modal_confirm_title' => $this->l('Bloquer l’achat sur commande'),
+                            'modal_cancel' => $this->l('Annuler'),
+                            'modal_progress_title' => $this->l('Bloquer l’achat sur commande pour %total% produits'),
+                            'modal_progress_message' => $this->l('Traitement %done% / %total% produits'),
+                            'modal_close' => $this->l('Fermer'),
+                            'modal_stop_processing' => $this->l('Arrêter le traitement'),
+                            'modal_errors_message' => $this->l('%error_count% erreurs se sont produites. Vous pouvez télécharger les logs pour vous y référer ultérieurement.'),
+                            'modal_back_to_processing' => $this->l('Reprendre le traitement'),
+                            'modal_download_error_log' => $this->l("Télécharger le rapport d'erreur"),
+                            'modal_view_error_log' => $this->l('Afficher %error_count% rapports d\'erreur '),
+                            'modal_error_title' => $this->l("Journal d'erreurs"),
+                        ])
+                    );
+
+                    $bulkActions->add((new AjaxBulkAction('psba_backorder_default_ajax'))
+                        ->setName($this->l('Achat sur commande (défaut boutique)'))
+                        ->setOptions([
+                            'class' => '',
+                            'ajax_route' => 'prestashop_bulk_action_backorder_default',
+                            'route_params' => ['shopId' => $shopId],
+                            'request_param_name' => 'product_bulk',
+                            'bulk_chunk_size' => 10,
+                            'reload_after_bulk' => true,
+                            'confirm_bulk_action' => true,
+                            'modal_confirm_title' => $this->l('Revenir au réglage par défaut de la boutique'),
+                            'modal_cancel' => $this->l('Annuler'),
+                            'modal_progress_title' => $this->l('Appliquer le réglage par défaut à %total% produits'),
+                            'modal_progress_message' => $this->l('Traitement %done% / %total% produits'),
+                            'modal_close' => $this->l('Fermer'),
+                            'modal_stop_processing' => $this->l('Arrêter le traitement'),
+                            'modal_errors_message' => $this->l('%error_count% erreurs se sont produites. Vous pouvez télécharger les logs pour vous y référer ultérieurement.'),
+                            'modal_back_to_processing' => $this->l('Reprendre le traitement'),
+                            'modal_download_error_log' => $this->l("Télécharger le rapport d'erreur"),
+                            'modal_view_error_log' => $this->l('Afficher %error_count% rapports d\'erreur '),
+                            'modal_error_title' => $this->l("Journal d'erreurs"),
+                        ])
+                    );
                 };
 
                 $addSubmitFallback = function () use ($bulkActions, $shopId) {
@@ -403,6 +480,34 @@ class prestashop_bulk_action extends Module
                         ->setName($this->l('Rendre indisponible à la vente'))
                         ->setOptions([
                             'submit_route' => 'prestashop_bulk_action_make_unavailable',
+                            'route_params' => ['shopId' => $shopId],
+                            'submit_method' => 'POST',
+                        ])
+                    );
+
+                    // Fallback submit pour les actions d'achat sur commande
+                    $bulkActions->add((new SubmitBulkAction('psba_backorder_allowed_submit'))
+                        ->setName($this->l('Achat sur commande autorisé'))
+                        ->setOptions([
+                            'submit_route' => 'prestashop_bulk_action_backorder_allowed',
+                            'route_params' => ['shopId' => $shopId],
+                            'submit_method' => 'POST',
+                        ])
+                    );
+
+                    $bulkActions->add((new SubmitBulkAction('psba_backorder_blocked_submit'))
+                        ->setName($this->l('Achat sur commande bloqué'))
+                        ->setOptions([
+                            'submit_route' => 'prestashop_bulk_action_backorder_blocked',
+                            'route_params' => ['shopId' => $shopId],
+                            'submit_method' => 'POST',
+                        ])
+                    );
+
+                    $bulkActions->add((new SubmitBulkAction('psba_backorder_default_submit'))
+                        ->setName($this->l('Achat sur commande (défaut boutique)'))
+                        ->setOptions([
+                            'submit_route' => 'prestashop_bulk_action_backorder_default',
                             'route_params' => ['shopId' => $shopId],
                             'submit_method' => 'POST',
                         ])
